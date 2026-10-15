@@ -1,20 +1,31 @@
 from playwright.sync_api import sync_playwright, expect, TimeoutError
 from datetime import datetime
 import time
-import re
 import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
+import re
+import streamlit as st
 
 
 def main():
     global value_inside
     global entry
     global var_checkbox
+    global contador
 
     janela = tk.Tk()
     janela.title("Minha Primeira Janela")
     janela.geometry("400x300")
+
+    contador = tk.Spinbox(
+    janela,
+    from_=1,       # Minimum value
+    to=15,        # Maximum value
+    increment=1,   # Step size
+    width=5,
+    font=("Arial", 12)
+    )
+    contador.pack()
 
     label = tk.Label(janela, text="Digite uma unidade:")
     label.pack(pady=5)
@@ -48,6 +59,7 @@ def executar():
     #selecionando se sera procedimentos ou especialidades
     espe_ou_proced = format(value_inside.get())
     buscar_unidade = entry.get()
+    cont = int(contador.get()) + 1
     
     with sync_playwright() as pw:
         navegador = pw.chromium.launch(headless=False)  # Abre o Chrome em modo visual
@@ -65,7 +77,7 @@ def executar():
         expect(pagina.get_by_role("link", name="Regulação").nth(1)).to_be_visible(timeout=60000)
         pagina.get_by_role("link", name="Regulação").nth(1).click()
 
-
+        
 
 
         time.sleep(2)
@@ -101,16 +113,15 @@ def executar():
 
         time.sleep(2)
         repetir = 0
-        cont = 2
         retorno = False
         repetido = False
         tentativa_verficar_paciente = 0
+        nome_repitido = 0
         while repetir == 0:
             telemedicina= False
             ceo_kayatt_nucleo = False
             nao_possui_procedimento = False
-            #apertar botao para carregar abrir ficha
-            #pagina.get_by_role("link", name="Analisar").first.click()
+           
             expect(pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[4]/div[1]/div['+str(cont)+']/div/div[4]/div/a[1]')).to_be_visible(timeout=60000)
             expect(pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[4]/div[1]/div['+str(cont)+']/div/div[4]/div/a[1]')).to_be_enabled(timeout=60000)
             pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[4]/div/div['+str(cont)+']/div/div[4]/div/a[1]').click() 
@@ -169,7 +180,8 @@ def executar():
                     expect(pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[2]/div[2]/dl/dd[6]')).to_be_enabled(timeout=60000)
                     especialidade = pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[2]/div[2]/dl/dd[6]').text_content()
                     print(especialidade)
-
+                    if(especialidade.count("TOMOGRAFIA")):
+                        print('possui tomografia')
                     #selecionando cid
                     if espe_ou_proced == 'PROCEDIMENTOS':
                         expect(pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[2]/div[2]/dl/dd[10]')).to_be_visible(timeout=60000)
@@ -203,7 +215,7 @@ def executar():
                     expect(pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[2]/div[2]/dl/dd[7]')).to_be_enabled(timeout=60000)
                     especialidade = pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[2]/div[2]/dl/dd[7]').text_content()
                     print(especialidade)
-
+                    
                     #selecionando cid
                     expect(pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[2]/div[2]/dl/dd[12]')).to_be_visible(timeout=60000)
                     expect(pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[2]/div[2]/dl/dd[12]')).to_be_enabled(timeout=60000)
@@ -212,17 +224,22 @@ def executar():
                   #pegar unidade que o paciente esta cadastrado
                 
                 try:
-                    elemento = pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[2]/div[1]/dl/dd[7]').wait_for(timeout=10000)
+                    elemento = pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[2]/div[1]/dl/dd[7]').wait_for(timeout=2000)
                     Unidade_cadastrada = pagina.locator('xpath=/html/body/div[1]/div[1]/div/div/div/div/div/div/div[2]/div[1]/dl/dd[7]').text_content()
                     print(Unidade_cadastrada)
                 except TimeoutError:
+                
                     if unidade == '(NUCLEO AMPLIADO DE SAUDE SONIA CINTAS)':
                         Unidade_cadastrada = 'Nada'
                     if unidade == '(CENTRO REGIONAL DE ESPECIALIDADE DR JOAO KAYATT)':
                         Unidade_cadastrada = 'Nada'
                     if unidade == '(UNIDADE BASICA DE SAUDE DA FAMILIA ANDERSON LUIZ M GODOY)':
                         Unidade_cadastrada = 'Nada'
-                  
+                    if unidade == '(CENTRO DE ATENDIMENTO MEDICO AMBULATORIAL - CIS)':
+                        Unidade_cadastrada = 'CIS'
+                    if unidade == '(CENTRO DE ESPECIALIDADE ODONTOLOGICA)':
+                        Unidade_cadastrada = 'CENTRAL DE REGULACAO DE PONTA PORA'
+
                 #Verificar se paciente possui unidade registrada
                 if Unidade_cadastrada != 'Nada':
                 
@@ -266,6 +283,8 @@ def executar():
                     if unidade == '(UNIDADE BASICA DE SAUDE LEONOR COELHO BATISTA)':
                         unidade = 'LEONOR COELHO'
                     if unidade == '(CENTRO INTEGRADO DE SAUDE CIS TERTULIANA DE FREITAS)':
+                        unidade = 'CIS'
+                    if unidade == '(CENTRO DE ATENDIMENTO MEDICO AMBULATORIAL - CIS)':
                         unidade = 'CIS'
                     if unidade == '(UNIDADE BASICA DA FAMILIA DRA NISLAINE COLMAN BENITES)':
                         unidade = 'NISLAINE COLMAN'
@@ -394,6 +413,7 @@ def executar():
                     if nao_possui_procedimento == False:
                         if cid == 'ESTADO DE INFECÇÃO ASSINTOMÁTICA PELO VÍRUS DA IMUNODEFICIÊNCIA HUMANA [HIV]':
                             cid = cid.replace(" [HIV]", "")
+                      
                         while tentativa == True:
                             try:
                                 
@@ -402,22 +422,9 @@ def executar():
                                 pagina2.get_by_role("textbox", name="Busca CID").fill(cid)
                                 
                                 elemento = pagina2.locator('xpath=/html/body/main/section[1]/div[2]/astro-island/div/div[2]/div[2]/a[1]/span[2]').wait_for(timeout=5000)
-                                #expect(pagina2.locator('xpath=/html/body/main/section[1]/div[2]/astro-island/div/div[2]/div[2]/a[1]')).wait_for(timeout=2000)
                                 cid_numero = pagina2.locator('xpath=/html/body/main/section[1]/div[2]/astro-island/div/div[2]/div[2]/a[1]/span[2]').text_content()
                                 cid_numero = cid_numero.replace(".", "")
-                                #pegando a string inteira do cid e substituindo apenas para numeracao
-                                '''elemento = pagina2.locator('xpath=/html/body/main/section[1]/div[2]/astro-island/div/div[2]/div[2]/a[1]').wait_for(timeout=5000)
-                                #expect(pagina2.locator('xpath=/html/body/main/section[1]/div[2]/astro-island/div/div[2]/div[2]/a[1]')).wait_for(timeout=2000)
-                                cid_numero = pagina2.locator('xpath=/html/body/main/section[1]/div[2]/astro-island/div/div[2]/div[2]/a[1]').text_content()
-
-                                cid_numero = re.sub(r"CID-10", "", cid_numero)
-                                cid = cid.replace("[", "")
-                                cid = cid.replace("]", "")
-                                cid_numero = cid_numero.replace("[", "")
-                                cid_numero = cid_numero.replace("]", "")
-                                cid_numero = re.sub(cid.upper(), "", cid_numero.upper())
-                                cid_numero = cid_numero.replace(".", "")'''
-
+                            
                                 print(cid_numero)
 
                                 print('\n----------------------------------------------------')
@@ -456,13 +463,18 @@ def executar():
                             except TimeoutError:
                                 pagina1.reload()
                         
-                        if nome_verificar == paciente:
-                        
+                        if nome_verificar == paciente or nome_repitido == 1:
+                            nome_repitido = 0
+                            tentativa_verficar_paciente = 0
                             expect(pagina1.locator('xpath=/html/body/div[1]/div[6]/div/div/div[2]/table/tbody/tr/td[9]')).to_be_visible(timeout=60000)
                             expect(pagina1.locator('xpath=/html/body/div[1]/div[6]/div/div/div[2]/table/tbody/tr/td[9]')).to_be_enabled(timeout=60000)
                             cidade = pagina1.locator('xpath=/html/body/div[1]/div[6]/div/div/div[2]/table/tbody/tr/td[9]').text_content()
 
-                            if cidade == 'PONTA PORA':
+                            expect(pagina1.locator('xpath=/html/body/div[1]/div[6]/div/div/div[2]/table/tbody/tr/td[25]')).to_be_visible(timeout=60000)
+                            expect(pagina1.locator('xpath=/html/body/div[1]/div[6]/div/div/div[2]/table/tbody/tr/td[25]')).to_be_enabled(timeout=60000)
+                            pais = pagina1.locator('xpath=/html/body/div[1]/div[6]/div/div/div[2]/table/tbody/tr/td[25]').text_content()
+                            
+                            if cidade == 'PONTA PORA' or pais == 'PARAGUAI':
 
                                 if idade < 17:
                                     mae = pagina1.locator('xpath=/html/body/div[1]/div[6]/div/div/div[2]/table/tbody/tr/td[6]').text_content()
@@ -474,6 +486,17 @@ def executar():
                                 if idade < 17:
                                     pagina1.get_by_role("textbox", name="Nome do(a) Responsável *").fill(mae)
                                     pagina1.type("#duosystem_regulacaobundle_atendimentotransicao_paciente_telefoneResponsavel",ddd+telefone1)
+                                
+                                if pais == 'PARAGUAI':
+
+                                    expect(pagina1.locator("#duosystem_regulacaobundle_atendimentotransicao_endereco_cep")).to_be_visible(timeout=60000)
+                                    expect(pagina1.locator("#duosystem_regulacaobundle_atendimentotransicao_endereco_cep")).to_be_enabled(timeout=60000)
+                                    pagina1.type("#duosystem_regulacaobundle_atendimentotransicao_endereco_cep",'79904718')
+
+                                    expect(pagina1.locator("#duosystem_regulacaobundle_atendimentotransicao_endereco_numero")).to_be_visible(timeout=60000)
+                                    expect(pagina1.locator("#duosystem_regulacaobundle_atendimentotransicao_endereco_numero")).to_be_enabled(timeout=60000)
+                                    pagina1.locator("#duosystem_regulacaobundle_atendimentotransicao_endereco_numero").click()
+                                    pagina1.locator("#duosystem_regulacaobundle_atendimentotransicao_endereco_numero").fill('S/N')
 
                                 expect(pagina1.locator("select#duosystem_regulacaobundle_atendimentotransicao_telefone_0_tipo")).to_be_visible(timeout=60000)
                                 expect(pagina1.locator("select#duosystem_regulacaobundle_atendimentotransicao_telefone_0_tipo")).to_be_enabled(timeout=60000)
@@ -571,15 +594,14 @@ def executar():
                                     expect(pagina1.locator('xpath=/html/body/div[1]/div[1]/section[2]/div[1]/div[1]/form/div[2]/fieldset[3]/div[2]/div/div/div[2]/div/div/div/table/tbody/tr[1]/td[1]/input')).to_be_visible(timeout=5000)
                                     expect(pagina1.locator("xpath=/html/body/div[1]/div[1]/section[2]/div[1]/div[1]/form/div[2]/fieldset[3]/div[2]/div/div/div[2]/div/div/div/table/tbody/tr[1]/td[1]/input")).to_be_enabled(timeout=5000)
                                     pagina1.locator('xpath=/html/body/div[1]/div[1]/section[2]/div[1]/div[1]/form/div[2]/fieldset[3]/div[2]/div/div/div[2]/div/div/div/table/tbody/tr[1]/td[1]/input').click()
-                                    
+                                    if(especialidade.count("TOMOGRAFIA")) or (especialidade.count("RADIOGRAFIA")):
+                                        messagebox.showinfo("Checkbox", "Adicione informacao desejada")
+                                   
                                     try:
                                         elemento = pagina1.get_by_role("button", name="Salvar").wait_for(timeout=5000)
-                                        expect(pagina1.get_by_role("button", name="Salvar")).to_be_visible(timeout=5000)
-                                        expect(pagina1.get_by_role("button", name="Salvar")).to_be_enabled(timeout=5000)
                                         pagina1.get_by_role("button", name="Salvar").click()
-                                    
-                                        expect(pagina1.get_by_role("menuitem", name="Próximo")).to_be_visible(timeout=60000)
-                                        expect(pagina1.get_by_role("menuitem", name="Próximo")).to_be_enabled(timeout=60000)
+
+                                        elemento = pagina1.get_by_role("menuitem", name="Próximo").wait_for(timeout=5000)
                                         pagina1.get_by_role("menuitem", name="Próximo").click()
                                         try:
                                             #ultimo passo verificar dados do paciente e colocar quadro clinico
@@ -655,6 +677,7 @@ def executar():
                         else:
                             
                             if tentativa_verficar_paciente < 1:
+                                nome_repitido = simpledialog.askinteger("Entrada", "Paciente correto?")
                                 pagina1.locator('xpath=/html/body/div[1]/div[6]/div/div/div[2]/table/tbody/tr/td[1]/input').click()
                                 pagina1.locator('xpath=/html/body/div[1]/div[6]/div/div/div[3]/button[1]').click()
                                 tentativa_verficar_paciente = tentativa_verficar_paciente + 1
