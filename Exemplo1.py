@@ -6,7 +6,6 @@ from tkinter import messagebox, simpledialog
 import re
 import streamlit as st
 
-
 def main():
     global value_inside
     global entry
